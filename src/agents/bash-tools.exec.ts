@@ -309,10 +309,18 @@ export function createExecTool(
       const requestedHost = normalizeExecHost(params.host) ?? null;
       let host: ExecHost = requestedHost ?? configuredHost;
       if (!elevatedRequested && requestedHost && requestedHost !== configuredHost) {
-        throw new Error(
-          `exec host not allowed (requested ${renderExecHostLabel(requestedHost)}; ` +
-            `configure tools.exec.host=${renderExecHostLabel(configuredHost)} to allow).`,
-        );
+        // ACP delegation: when session has no explicit exec host config (defaults to sandbox)
+        // but the tool call requests node (e.g. from parent agent), allow for ACP compatibility.
+        const allowedAcpFallback =
+          configuredHost === "sandbox" &&
+          defaults?.host === undefined &&
+          requestedHost === "node";
+        if (!allowedAcpFallback) {
+          throw new Error(
+            `exec host not allowed (requested ${renderExecHostLabel(requestedHost)}; ` +
+              `configure tools.exec.host=${renderExecHostLabel(configuredHost)} to allow).`,
+          );
+        }
       }
       if (elevatedRequested) {
         host = "gateway";
